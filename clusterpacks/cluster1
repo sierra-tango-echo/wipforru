@@ -1,0 +1,7 @@
+CLUSTERNAME=sitecluster
+#THESE ARE /30 netwoks, hub itself uses the first subnet, so first cluster is likely to be 5-6
+CLIENTIP=10.178.0.5
+SERVERIP=10.178.0.6
+#GENERATE THIS WITH openssl passwd -1
+PASSWORD=$1$r3YUprpE$cWJNJow9KzSByJPO4me2B/
+

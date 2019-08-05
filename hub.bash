@@ -1,11 +1,15 @@
 #!/bin/bash
 
-#Make sure we have decent firewall basics
+#Make sure we have decent firewall basics - probably do this somewhere else
 yum -y install firewalld
-systemctl enable firewalld 
+systemctl enable firewalld
+firewall-cmd --add-interface eth0 --zone external --permanent
+firewall-cmd --add-service openvpn --zone external --permanent
+firewall-cmd --reload
+
 
 yum install epel-release -y
-yum install openvpn easy-rsa -y
+yum install openvpn easy-rsa bind-utils -y
 
 if [ -d /etc/openvpn/easyrsa ]; then
   echo "no clean" >&2
@@ -64,7 +68,7 @@ chmod 744 /etc/openvpn/easyrsa/vars
 cat << EOF > /etc/openvpn/cluster.conf
 port 1195
 proto tcp
-dev tun1
+dev tun0
 ca /etc/openvpn/easyrsa/pki/ca.crt
 cert /etc/openvpn/easyrsa/pki/issued/hub.crt
 key /etc/openvpn/easyrsa/pki/private/hub.key
@@ -91,7 +95,7 @@ cat << EOF > /etc/pam.d/openvpn-cluster
 auth [user_unknown=ignore success=ok ignore=ignore default=bad] pam_securetty.so
 auth       substack     system-auth
 auth       include      postlogin
-auth       required     pam_listfile.so onerr=fail item=group sense=allow file=/etc/openvpn/clusters.users
+auth       required     pam_listfile.so onerr=fail item=user sense=allow file=/etc/openvpn/cluster.users
 account    required     pam_nologin.so
 account    include      system-auth
 password   include      system-auth
@@ -111,5 +115,15 @@ EOF
 #prep for our clients
 mkdir /etc/openvpn/ccd-cluster
 touch /etc/openvpn/ipp-cluster
+touch /etc/openvpn/cluster.users
 
+#firewall prep
+firewall-cmd --new-zone clustervpn --permanent
+firewall-cmd --add-interface tun0 --zone clustervpn --permanent
 
+firewall-cmd --reload
+systemctl enable openvpn@cluster
+systemctl start openvpn@cluster
+
+#Check I'm open
+(curl -sd port="1195" https://canyouseeme.org |grep -qo 'Success') || echo "WARNING! - Cannot get at 1195"
