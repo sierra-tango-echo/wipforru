@@ -4,7 +4,7 @@
 yum -y install firewalld
 systemctl enable firewalld
 firewall-cmd --add-interface eth0 --zone external --permanent
-firewall-cmd --add-service openvpn --zone external --permanent
+firewall-cmd --add-port 1195/tcp --zone external --permanent
 firewall-cmd --reload
 
 
@@ -88,6 +88,7 @@ username-as-common-name
 plugin /usr/lib64/openvpn/plugins/openvpn-plugin-auth-pam.so openvpn-cluster
 client-config-dir ccd-cluster
 ccd-exclusive
+client-to-client
 EOF
 
 cat << EOF > /etc/pam.d/openvpn-cluster
@@ -119,11 +120,13 @@ touch /etc/openvpn/cluster.users
 
 #firewall prep
 firewall-cmd --new-zone clustervpn --permanent
+firewall-cmd --add-interface tun0 --zone clustervpn
 firewall-cmd --add-interface tun0 --zone clustervpn --permanent
 
-firewall-cmd --reload
 systemctl enable openvpn@cluster
 systemctl start openvpn@cluster
+
+firewall-cmd --reload
 
 #Check I'm open
 (curl -sd port="1195" https://canyouseeme.org |grep -qo 'Success') || echo "WARNING! - Cannot get at 1195"

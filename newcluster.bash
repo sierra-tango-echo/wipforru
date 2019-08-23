@@ -14,6 +14,11 @@ if [ -z "$CLUSTERNAME" ]; then
   exit 1
 fi
 
+if ( id "${CLUSTERNAME}" > /dev/null 2>&1 ); then 
+  echo "Client by that name already exisits" >&2
+  exit 1
+fi
+
 #Probably want to validate the clusterpack makes sense here as well
 
 
@@ -47,8 +52,16 @@ comp-lzo
 verb 3
 EOF
 
+echo -n "Enter your FlightHub password: "; read PASSWORD
+cat << EOF > /etc/openvpn/auth.flighthub
+${CLUSTERNAME}
+\${PASSWORD}
+EOF
+
+chmod 600 /etc/openvpn/auth.flighthub
+
 systemctl start openvpn@flighthub
+
 EOD
 
-#Check i'm open
-(curl -sd port="1195" https://canyouseeme.org |grep -qo 'Success') || echo "WARNING! - Cannot get at 1195"
+echo "${CLIENTIP} ${CLUSTERNAME}" >> /etc/hosts
